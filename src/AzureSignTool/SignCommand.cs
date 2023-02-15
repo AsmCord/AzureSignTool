@@ -30,6 +30,9 @@ namespace AzureSignTool
         [Option("-kvs | --azure-key-vault-client-secret", "The Client Secret to authenticate to the Azure Key Vault.", CommandOptionType.SingleValue)]
         public (bool Present, string Value) KeyVaultClientSecret { get; set; }
 
+        [Option("-kvac | --azure-key-vault-client-auth-certificate", "The Client certificate thumbprint to authenticate to the Azure Key Vault.", CommandOptionType.SingleValue)]
+        public (bool Present, string Value) KeyVaultClientAuthCertificate { get; set; }
+
         [Option("-kvt | --azure-key-vault-tenant-id", "The Tenant Id to authenticate to the Azure Key Vault.", CommandOptionType.SingleValue)]
         public (bool Present, string Value) KeyVaultTenantId { get; set; }
 
@@ -152,9 +155,9 @@ namespace AzureSignTool
                 return new ValidationResult("Cannot use '--timestamp-rfc3161' and '--timestamp-authenticode' options together.", new[] { nameof(Rfc3161Timestamp), nameof(AuthenticodeTimestamp) });
             }
 
-            if (KeyVaultClientId.Present && !KeyVaultClientSecret.Present)
+            if (KeyVaultClientId.Present && !KeyVaultClientSecret.Present && !KeyVaultClientAuthCertificate.Present)
             {
-                return new ValidationResult("Must supply '--azure-key-vault-client-secret' when using '--azure-key-vault-client-id'.", new[] { nameof(KeyVaultClientSecret) });
+                return new ValidationResult("Must supply '--azure-key-vault-client-secret' or '--azure-key-vault-client-auth-certificate' when using '--azure-key-vault-client-id'.", new[] { nameof(KeyVaultClientSecret) });
             }
 
             if (KeyVaultClientId.Present && !KeyVaultTenantId.Present)
@@ -224,6 +227,7 @@ namespace AzureSignTool
                     AzureKeyVaultCertificateName = KeyVaultCertificate,
                     AzureClientId = KeyVaultClientId.Value,
                     AzureTenantId = KeyVaultTenantId.Value,
+                    AzureCertificateThumbprint = KeyVaultClientAuthCertificate.Value,
                     AzureAccessToken = KeyVaultAccessToken.Value,
                     AzureClientSecret = KeyVaultClientSecret.Value,
                     ManagedIdentity = UseManagedIdentity,
