@@ -30,8 +30,11 @@ namespace AzureSignTool
         [Option("-kvs | --azure-key-vault-client-secret", "The Client Secret to authenticate to the Azure Key Vault.", CommandOptionType.SingleValue)]
         public (bool Present, string Value) KeyVaultClientSecret { get; set; }
 
-        [Option("-kvac | --azure-key-vault-client-auth-certificate", "The Client certificate thumbprint to authenticate to the Azure Key Vault.", CommandOptionType.SingleValue)]
+        [Option("-kvac | --azure-key-vault-client-auth-certificate", "The Client certificate thumbprint to authenticate to the Azure Key Vault. The certificate is searched in the key store of the local user.", CommandOptionType.SingleValue)]
         public (bool Present, string Value) KeyVaultClientAuthCertificate { get; set; }
+
+        [Option("-kvacm | --azure-key-vault-client-auth-certificate-machine", "The Client certificate thumbprint to authenticate to the Azure Key Vault. The certificate is searched in the key store of the local computer.", CommandOptionType.SingleValue)]
+        public (bool Present, string Value) KeyVaultClientAuthCertificateMachine { get; set; }
 
         [Option("-kvt | --azure-key-vault-tenant-id", "The Tenant Id to authenticate to the Azure Key Vault.", CommandOptionType.SingleValue)]
         public (bool Present, string Value) KeyVaultTenantId { get; set; }
@@ -155,9 +158,29 @@ namespace AzureSignTool
                 return new ValidationResult("Cannot use '--timestamp-rfc3161' and '--timestamp-authenticode' options together.", new[] { nameof(Rfc3161Timestamp), nameof(AuthenticodeTimestamp) });
             }
 
-            if (KeyVaultClientId.Present && !KeyVaultClientSecret.Present && !KeyVaultClientAuthCertificate.Present)
+            if (KeyVaultClientId.Present && ((!KeyVaultClientSecret.Present && !KeyVaultClientAuthCertificate.Present) || (KeyVaultClientSecret.Present && KeyVaultClientAuthCertificate.Present)))
             {
-                return new ValidationResult("Must supply '--azure-key-vault-client-secret' or '--azure-key-vault-client-auth-certificate' when using '--azure-key-vault-client-id'.", new[] { nameof(KeyVaultClientSecret) });
+                // only one authentication parameter is allowed
+                var authParameters = 0;
+                if (KeyVaultClientSecret.Present)
+                {
+                    authParameters++;
+                }
+
+                if (KeyVaultClientAuthCertificate.Present)
+                {
+                    authParameters++;
+                }
+
+                if (KeyVaultClientAuthCertificateMachine.Present)
+                {
+                    authParameters++;
+                }
+
+                if (authParameters != 1)
+                {
+                    return new ValidationResult("Must supply '--azure-key-vault-client-secret', '--azure-key-vault-client-auth-certificate' or '--azure-key-vault-client-auth-certificate-machine' (only one of these parameters) when using '--azure-key-vault-client-id'.", new[] { nameof(KeyVaultClientSecret) });
+                }
             }
 
             if (KeyVaultClientId.Present && !KeyVaultTenantId.Present)
@@ -227,7 +250,8 @@ namespace AzureSignTool
                     AzureKeyVaultCertificateName = KeyVaultCertificate,
                     AzureClientId = KeyVaultClientId.Value,
                     AzureTenantId = KeyVaultTenantId.Value,
-                    AzureCertificateThumbprint = KeyVaultClientAuthCertificate.Value,
+                    AzureClientCertificateThumbprint = KeyVaultClientAuthCertificate.Value,
+                    AzureClientCertificateThumbprintMachine = KeyVaultClientAuthCertificateMachine.Value,
                     AzureAccessToken = KeyVaultAccessToken.Value,
                     AzureClientSecret = KeyVaultClientSecret.Value,
                     ManagedIdentity = UseManagedIdentity,

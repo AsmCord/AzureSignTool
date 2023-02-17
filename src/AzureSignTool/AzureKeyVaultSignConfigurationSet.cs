@@ -12,6 +12,7 @@ namespace AzureSignTool
         public Uri AzureKeyVaultUrl { get; set; }
         public string AzureKeyVaultCertificateName { get; set; }
         public string AzureAccessToken { get; set; }
-        public string AzureCertificateThumbprint { get; set; }
+        public string AzureClientCertificateThumbprint { get; set; }
+        public string AzureClientCertificateThumbprintMachine { get; set; }
     }
 }
