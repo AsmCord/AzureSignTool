@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Runtime.InteropServices;
 
 namespace AzureSign.Core.Interop
@@ -10,7 +10,7 @@ namespace AzureSign.Core.Interop
         public static extern bool CertCloseStore
         (
             [In, MarshalAs(UnmanagedType.SysInt)] IntPtr hCertStore,
-            [In, MarshalAs(UnmanagedType.U4)] CertCloreStoreFlags dwFlags 
+            [In, MarshalAs(UnmanagedType.U4)] CertCloreStoreFlags dwFlags
         );
 
         [return: MarshalAs(UnmanagedType.SysInt)]
@@ -26,20 +26,12 @@ namespace AzureSign.Core.Interop
     }
 
     [type: StructLayout(LayoutKind.Sequential)]
-    internal struct SIGNER_CERT_STORE_INFO
+    internal struct SIGNER_CERT_STORE_INFO(IntPtr pSigningCert, SignerCertStoreInfoFlags dwCertPolicy, IntPtr hCertStore)
     {
-        public uint cbSize;
-        public IntPtr pSigningCert;
-        public SignerCertStoreInfoFlags dwCertPolicy;
-        public IntPtr hCertStore;
-
-        public SIGNER_CERT_STORE_INFO(IntPtr pSigningCert, SignerCertStoreInfoFlags dwCertPolicy, IntPtr hCertStore)
-        {
-            this.cbSize = (uint)Marshal.SizeOf<SIGNER_CERT_STORE_INFO>();
-            this.pSigningCert = pSigningCert;
-            this.dwCertPolicy = dwCertPolicy;
-            this.hCertStore = hCertStore;
-        }
+        public uint cbSize = (uint)Marshal.SizeOf<SIGNER_CERT_STORE_INFO>();
+        public IntPtr pSigningCert = pSigningCert;
+        public SignerCertStoreInfoFlags dwCertPolicy = dwCertPolicy;
+        public IntPtr hCertStore = hCertStore;
     }
 
     [type: Flags]
