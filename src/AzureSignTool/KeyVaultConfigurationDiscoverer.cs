@@ -1,4 +1,4 @@
-﻿using Azure.Core;
+using Azure.Core;
 using Azure.Identity;
 using Azure.Security.KeyVault.Certificates;
 
@@ -54,30 +54,44 @@ namespace AzureSignTool
                 _logger.LogError($"Could not create credentials for authentication to the Azure Key Vault.");
                 _logger.LogTrace(e.ToString());
                 
-                return e;
+                throw;
             }
 
 
             X509Certificate2 certificate;
-            KeyVaultCertificateWithPolicy azureCertificate;
+            KeyVaultCertificate azureCertificate;
             try
             {
                 var certClient = new CertificateClient(configuration.AzureKeyVaultUrl, credential);
 
-                _logger.LogTrace($"Retrieving certificate {configuration.AzureKeyVaultCertificateName}.");
-                azureCertificate = (await certClient.GetCertificateAsync(configuration.AzureKeyVaultCertificateName).ConfigureAwait(false)).Value;
-                _logger.LogTrace($"Retrieved certificate {configuration.AzureKeyVaultCertificateName}.");
-                
-                certificate = new X509Certificate2(azureCertificate.Cer);
+                if (!string.IsNullOrWhiteSpace(configuration.AzureKeyVaultCertificateVersion))
+                {
+                    _logger.LogTrace($"Retrieving version [{configuration.AzureKeyVaultCertificateVersion}] of certificate {configuration.AzureKeyVaultCertificateName}.");
+                    azureCertificate = (await certClient.GetCertificateVersionAsync(configuration.AzureKeyVaultCertificateName, configuration.AzureKeyVaultCertificateVersion).ConfigureAwait(false)).Value;
+                }
+                else
+                {
+                    _logger.LogTrace($"Retrieving current version of certificate {configuration.AzureKeyVaultCertificateName}.");
+                    azureCertificate = (await certClient.GetCertificateAsync(configuration.AzureKeyVaultCertificateName).ConfigureAwait(false)).Value;
+                }
+                _logger.LogTrace($"Retrieved certificate with Id {azureCertificate.Id}.");
+
+                certificate = X509CertificateLoader.LoadCertificate(azureCertificate.Cer);
             }
             catch (Exception e)
             {
                 _logger.LogError($"Failed to retrieve certificate {configuration.AzureKeyVaultCertificateName} from Azure Key Vault. Please verify the name of the certificate and the permissions to the certificate. Error message: {e.Message}.");
                 _logger.LogTrace(e.ToString());
-                
+
                 return e;
             }
             var keyId = azureCertificate.KeyId;
+
+            if (keyId is null)
+            {
+                return new InvalidOperationException("The Azure certificate does not have an associated private key.");
+            }
+
             return new AzureKeyVaultMaterializedConfiguration(credential, certificate, keyId);
         }
 
