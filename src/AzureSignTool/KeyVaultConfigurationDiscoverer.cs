@@ -24,25 +24,42 @@ namespace AzureSignTool
         public async Task<ErrorOr<AzureKeyVaultMaterializedConfiguration>> Materialize(AzureKeyVaultSignConfigurationSet configuration)
         {
             TokenCredential credential;
-            if (configuration.ManagedIdentity)
+            try
             {
-                credential = new DefaultAzureCredential();
-            }
-            else if(!string.IsNullOrWhiteSpace(configuration.AzureAccessToken))
-            {
-                credential = new AccessTokenCredential(configuration.AzureAccessToken);
-            }
-            else if (!string.IsNullOrWhiteSpace(configuration.AzureCertificateThumbprint))
-            {
-                string certificateThumbPrint = configuration.AzureCertificateThumbprint;
-                X509Certificate2? clientCertificate = LoadCertificateByThumbprint(certificateThumbPrint, StoreLocation.CurrentUser);
-                clientCertificate ??= LoadCertificateByThumbprint(certificateThumbPrint, StoreLocation.LocalMachine);
+                if (configuration.ManagedIdentity)
+                {
+                    credential = new DefaultAzureCredential();
+                }
+                else if (!string.IsNullOrWhiteSpace(configuration.AzureAccessToken))
+                {
+                    credential = new AccessTokenCredential(configuration.AzureAccessToken);
+                }
+                else if (!string.IsNullOrWhiteSpace(configuration.AzureCertificateThumbprint))
+                {
+                    string certificateThumbPrint = configuration.AzureCertificateThumbprint;
+                    X509Certificate2? clientCertificate = LoadCertificateByThumbprint(certificateThumbPrint, StoreLocation.CurrentUser);
+                    clientCertificate ??= LoadCertificateByThumbprint(certificateThumbPrint, StoreLocation.LocalMachine);
 
-                credential = new ClientCertificateCredential(configuration.AzureTenantId, configuration.AzureClientId, clientCertificate);
-            }
-            else
-            {
-                if (string.IsNullOrWhiteSpace(configuration.AzureAuthority))
+                    credential = new ClientCertificateCredential(
+                        configuration.AzureTenantId,
+                        configuration.AzureClientId,
+                        clientCertificate ?? throw new InvalidOperationException($"Could not find client authentication certificate {certificateThumbPrint}."));
+                }
+                else if (!string.IsNullOrWhiteSpace(configuration.AzureClientCertificateThumbprint))
+                {
+                    string certificateThumbPrint = configuration.AzureClientCertificateThumbprint;
+                    X509Certificate2 clientCertificate = LoadCertificateByThumbprint(certificateThumbPrint, StoreLocation.CurrentUser)
+                        ?? throw new InvalidOperationException($"Could not find client authentication certificate {certificateThumbPrint} in the current user store.");
+                    credential = new ClientCertificateCredential(configuration.AzureTenantId, configuration.AzureClientId, clientCertificate);
+                }
+                else if (!string.IsNullOrWhiteSpace(configuration.AzureClientCertificateThumbprintMachine))
+                {
+                    string certificateThumbPrint = configuration.AzureClientCertificateThumbprintMachine;
+                    X509Certificate2 clientCertificate = LoadCertificateByThumbprint(certificateThumbPrint, StoreLocation.LocalMachine)
+                        ?? throw new InvalidOperationException($"Could not find client authentication certificate {certificateThumbPrint} in the local machine store.");
+                    credential = new ClientCertificateCredential(configuration.AzureTenantId, configuration.AzureClientId, clientCertificate);
+                }
+                else if (string.IsNullOrWhiteSpace(configuration.AzureAuthority))
                 {
                     credential = new ClientSecretCredential(configuration.AzureTenantId, configuration.AzureClientId, configuration.AzureClientSecret);
                 }
@@ -54,6 +71,12 @@ namespace AzureSignTool
                     };
                     credential = new ClientSecretCredential(configuration.AzureTenantId, configuration.AzureClientId, configuration.AzureClientSecret, options);
                 }
+            }
+            catch (Exception e)
+            {
+                _logger.LogError("Could not create credentials for authentication to the Azure Key Vault.");
+                _logger.LogTrace(e.ToString());
+                throw;
             }
 
 

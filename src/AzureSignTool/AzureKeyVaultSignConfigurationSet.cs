@@ -13,6 +13,8 @@ namespace AzureSignTool
         public string AzureKeyVaultCertificateVersion { get; init; }
         public string AzureAccessToken { get; init; }
         public string AzureAuthority { get; init; }
-        public string AzureCertificateThumbprint { get; set; }
+        public string AzureCertificateThumbprint { get; init; }
+        public string AzureClientCertificateThumbprint { get; init; }
+        public string AzureClientCertificateThumbprintMachine { get; init; }
     }
 }
