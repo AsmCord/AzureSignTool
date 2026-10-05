@@ -206,6 +206,9 @@ This tool uses the same mechanisms for signing as the Windows SDK `signtool`. It
 However, the formats that `azuresigntool` and `signtool` support vary by operating system and which Subject Interface Packages are
 present on the system.
 
+VSIX files are signed as OPC packages, following the package-signing model used by Microsoft's .NET Sign CLI. VSIX signing requires
+an RSA certificate. RFC3161 timestamps are supported; legacy Authenticode timestamps are not supported for VSIX files.
+
 ## Exit Codes
 
 The exit code is an HRESULT. Successfully signing produces a result of `S_OK` ("0"). If all files fail to sign, the exit code is

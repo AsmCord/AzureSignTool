@@ -318,6 +318,7 @@ namespace AzureSignTool
                 using (var keyVault = await client.CreateRSAAsync())
                 using (var signer = new AuthenticodeKeyVaultSigner(keyVault, materialized.PublicCertificate, ParseHashAlgorithm(FileDigestAlgorithm), timeStampConfiguration, certificates))
                 {
+                    var vsixSigner = new VsixKeyVaultSigner(keyVault, materialized.PublicCertificate, ParseHashAlgorithm(FileDigestAlgorithm), timeStampConfiguration);
                     Parallel.ForEach(allFiles, options, () => (succeeded: 0, failed: 0), (filePath, pls, state) =>
                     {
                         if (cancellationSource.IsCancellationRequested)
@@ -338,7 +339,9 @@ namespace AzureSignTool
                                 return (state.succeeded + 1, state.failed);
                             }
 
-                            var result = signer.SignFile(filePath, SignDescription, SignDescriptionUrl, performPageHashing, logger, appendSignature);
+                            var result = IsVsix(filePath)
+                                ? vsixSigner.SignFile(filePath, logger)
+                                : signer.SignFile(filePath, SignDescription, SignDescriptionUrl, performPageHashing, logger, appendSignature);
                             switch (result)
                             {
                                 case COR_E_BADIMAGEFORMAT:
@@ -394,12 +397,22 @@ namespace AzureSignTool
         {
             try
             {
+                if (IsVsix(filePath))
+                {
+                    return VsixKeyVaultSigner.IsSigned(filePath);
+                }
+
                 return X509Certificate2.GetCertContentType(filePath) == X509ContentType.Authenticode;
             }
             catch (CryptographicException)
             {
                 return false;
             }
+        }
+
+        private static bool IsVsix(string filePath)
+        {
+            return string.Equals(Path.GetExtension(filePath), ".vsix", StringComparison.OrdinalIgnoreCase);
         }
 
         private bool ValidateArguments(CommandRunContext context)
